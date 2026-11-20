@@ -38,7 +38,7 @@ function toTradingViewSymbol(raw){
 
 async function load1647(){
   // TradingView INDIA SCAN - Gets all NSE symbols in one call
-  const url = "https://scanner.tradingview.com/india/scan";
+  const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://scanner.tradingview.com/india/scan");
   const body = {
     "filter": [{"left":"exchange","operation":"in_range","right":["NSE"]}],
     "options": {"lang":"en"},
