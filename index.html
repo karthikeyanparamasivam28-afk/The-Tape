@@ -19,7 +19,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px} th{text-align:left;co
 </head>
 <body>
 <h1>THE <span>TAPE</span></h1>
-<div class="sub">NSE LIVE - PROXY - BATCH - NO BLOCK</div>
+<div class="sub">NSE LIVE - YAHOO DIRECT - NO PROXY</div>
 <div class="box">
 <div class="card">ADVANCES<b class="g" id="adv">0</b></div>
 <div class="card">DECLINES<b class="r" id="dec">0</b></div>
@@ -33,31 +33,36 @@ table{width:100%;border-collapse:collapse;margin-top:10px} th{text-align:left;co
 <script>
 var SYMBOLS=["RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN","ITC","LT","TITAN","BAJFINANCE","MARUTI","TATAMOTORS","TATASTEEL","HINDUNILVR","ASIANPAINT","NESTLEIND","WIPRO","TECHM","HCLTECH","POWERGRID","NTPC","ONGC","COALINDIA","ULTRACEMCO","SUNPHARMA","DIVISLAB","ADANIENT","ADANIPORTS","TATAPOWER","IRCTC","DMART","ZOMATO","PAYTM","NYKAA","IDEA","YESBANK","PNB","BANKBARODA","CANBK","FEDERALBNK","IDFCFIRSTB","INDUSINDBK","AXISBANK","KOTAKBANK","BAJAJFINSV","HDFCLIFE","SBILIFE","ICICIPRULI","BRITANNIA","DABUR","MARICO","COLPAL","GODREJCP","TATACONSUM","PIDILITIND","HAVELLS","VOLTAS","SIEMENS","ABB","HAL","BEL","BDL","MAZAGON","COCHINSHIP","PFC","RECLTD","IRFC","RVNL","HUDCO","NHPC","TORNTPOWER","ADANIPOWER","JSWENERGY","BSE","MCX","CDSL","IEX","DIXON","KAYNES","ZEEL","SUNTV","PVRINOX","INDHOTEL","LEMONTREE","CHALET","TATACHEM","SRF","PIIND","UPL","COROMANDEL","SUZLON","INOXWIND","TATATECH","BALRAMCHIN","EIDPARRY","MUTHOOTFIN","MANAPPURAM","LICI","TATACOMM","BHARTIARTL","JIOFIN","JSWSTEEL","SAIL","NMDC","HINDALCO","VEDL","GRSE","PARAS","MTARTECH","ASTRAL","APLAPOLLO","JINDALSTEL","HINDCOPPER"];
 var data=[];
-async function fetchOne(url){
-  var tries=["https://api.allorigins.win/raw?url="+encodeURIComponent(url),"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),"https://corsproxy.io/?url="+encodeURIComponent(url)];
-  for(var i=0;i<tries.length;i++){
-    try{ var r=await fetch(tries[i]); if(r.ok){ var t=await r.text(); if(t && t.length>50) return t; } }catch(e){}
+async function fetchYahoo(symbols){
+  var qs=symbols.map(function(s){return s+".NS"}).join(",");
+  var urls=["https://query1.finance.yahoo.com/v7/finance/quote?symbols="+encodeURIComponent(qs),"https://query2.finance.yahoo.com/v7/finance/quote?symbols="+encodeURIComponent(qs)];
+  for(var i=0;i<urls.length;i++){
+    try{
+      var r=await fetch(urls[i]);
+      if(!r.ok) continue;
+      var j=await r.json();
+      if(j && j.quoteResponse && j.quoteResponse.result) return j.quoteResponse.result;
+    }catch(e){}
   }
-  throw new Error("all proxies failed");
+  throw new Error("Yahoo blocked - REFRESH click pannu / VPN try pannu");
 }
 async function loadAll(){
-  document.getElementById("status").textContent="● loading "+SYMBOLS.length+" symbols... (batch)";
+  document.getElementById("status").textContent="● loading "+SYMBOLS.length+" symbols via Yahoo...";
   data=[];
   try{
-    for(var b=0;b<SYMBOLS.length;b+=20){
-      var chunk=SYMBOLS.slice(b,b+20);
-      var q=chunk.map(function(s){return s.toLowerCase()+".ns"}).join(",");
-      var url="https://stooq.com/q/l/?s="+q+"&f=sd2t2ohlcv&h&e=csv";
-      var t=await fetchOne(url);
-      var lines=t.trim().split("\n");
-      for(var i=1;i<lines.length;i++){
-        var c=lines[i].split(",");
-        if(c.length<7) continue;
-        var sym=(c[0]||"").replace(".NS","").replace(".ns","").toUpperCase();
-        var open=parseFloat(c[3])||0, high=parseFloat(c[4])||0, low=parseFloat(c[5])||0, close=parseFloat(c[6])||0;
-        if(!close) continue;
-        var chg=close-open; var pct=open?(chg/open*100):0;
-        data.push({sym:sym,price:close,chg:chg,pct:pct,low:low,high:high});
+    for(var b=0;b<SYMBOLS.length;b+=50){
+      var chunk=SYMBOLS.slice(b,b+50);
+      var res=await fetchYahoo(chunk);
+      for(var i=0;i<res.length;i++){
+        var q=res[i];
+        var sym=(q.symbol||"").replace(".NS","").toUpperCase();
+        var price=q.regularMarketPrice||0;
+        var chg=q.regularMarketChange||0;
+        var pct=q.regularMarketChangePercent||0;
+        var low=q.regularMarketDayLow||price;
+        var high=q.regularMarketDayHigh||price;
+        if(!price) continue;
+        data.push({sym:sym,price:price,chg:chg,pct:pct,low:low,high:high});
       }
       document.getElementById("total").textContent=data.length+" / "+SYMBOLS.length;
       document.getElementById("status").textContent="● loading... "+data.length+" / "+SYMBOLS.length;
