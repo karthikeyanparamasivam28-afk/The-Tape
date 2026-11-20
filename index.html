@@ -3,91 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>THE TAPE</title>
+<title>NSE 1647 Live Table</title>
 <style>
-body{background:#000;color:#fff;font-family:Arial;margin:0;padding:12px}
-h1{font-size:28px;margin:0} h1 span{color:#22c55e}
-.sub{color:#9ca3af;font-size:12px;margin:6px 0 12px}
-.box{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.card{background:#111827;border:1px solid #222;padding:12px;border-radius:10px;flex:1;min-width:100px}
-.card b{font-size:20px;display:block}
-.g{color:#22c55e}.r{color:#ef4444}
-input,select{width:100%;background:#111827;color:#fff;border:1px solid #333;padding:11px;border-radius:8px;margin-bottom:8px;font-size:15px}
-button{background:#22c55e;color:#000;border:0;padding:12px;border-radius:8px;font-weight:800;width:100%;font-size:16px}
-table{width:100%;border-collapse:collapse;margin-top:10px} th{text-align:left;color:#9ca3af;padding:8px;border-bottom:1px solid #222} td{padding:9px 8px;border-bottom:1px solid #111;font-size:14px}
+*{box-sizing:border-box;font-family:Arial}body{background:#0f172a;color:#fff;padding:12px;margin:0}
+h1{text-align:center;font-size:20px}input{width:100%;padding:12px;margin:10px 0;border-radius:10px;border:none;background:#1e293b;color:#fff;font-size:15px}
+table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden}th,td{padding:10px 8px;font-size:13px;border-bottom:1px solid #334155;text-align:left}
+th{color:#94a3b8;cursor:pointer;user-select:none;position:sticky;top:0;background:#1e293b}.up{color:#22c55e}.down{color:#ef4444}
+#status{text-align:center;font-size:11px;color:#facc15;margin:8px}
 </style>
 </head>
 <body>
-<h1>THE <span>TAPE</span></h1>
-<div class="sub">NSE LIVE - YAHOO DIRECT - NO PROXY</div>
-<div class="box">
-<div class="card">ADVANCES<b class="g" id="adv">0</b></div>
-<div class="card">DECLINES<b class="r" id="dec">0</b></div>
-<div class="card">LOADED<b id="total">0</b></div>
-</div>
-<div id="status" style="color:#22c55e;font-size:13px">● loading...</div><br>
-<input id="search" placeholder="Search RELIANCE, TCS...">
-<select id="sort"><option value="change">Sort: % Change</option><option value="price">Sort: Price</option><option value="name">Sort: Name</option></select>
-<button onclick="loadAll()">REFRESH</button>
-<table><thead><tr><th>SYMBOL</th><th>LTP</th><th>CHG %</th><th>DAY RANGE</th></tr></thead><tbody id="tbody"></tbody></table>
+<h1>📈 NSE 1647 LIVE - TradingView</h1>
+<input id="search" placeholder="Search 1647 symbols... RELIANCE, M&M = M_M, TCS..." oninput="filterTable()">
+<div id="status">Loading 1647 symbols from TradingView...</div>
+<table><thead><tr>
+<th onclick="sortBy('symbol')">SYMBOL ↕</th>
+<th onclick="sortBy('close')">PRICE ↕</th>
+<th onclick="sortBy('change')">% ↕</th>
+<th onclick="sortBy('change_abs')">CHG ↕</th>
+<th onclick="sortBy('high')">HIGH ↕</th>
+<th onclick="sortBy('low')">LOW ↕</th>
+<th onclick="sortBy('volume')">VOL ↕</th>
+</tr></thead><tbody id="tbody"></tbody></table>
+
 <script>
-var SYMBOLS=["RELIANCE","TCS","INFY","HDFCBANK","ICICIBANK","SBIN","ITC","LT","TITAN","BAJFINANCE","MARUTI","TATAMOTORS","TATASTEEL","HINDUNILVR","ASIANPAINT","NESTLEIND","WIPRO","TECHM","HCLTECH","POWERGRID","NTPC","ONGC","COALINDIA","ULTRACEMCO","SUNPHARMA","DIVISLAB","ADANIENT","ADANIPORTS","TATAPOWER","IRCTC","DMART","ZOMATO","PAYTM","NYKAA","IDEA","YESBANK","PNB","BANKBARODA","CANBK","FEDERALBNK","IDFCFIRSTB","INDUSINDBK","AXISBANK","KOTAKBANK","BAJAJFINSV","HDFCLIFE","SBILIFE","ICICIPRULI","BRITANNIA","DABUR","MARICO","COLPAL","GODREJCP","TATACONSUM","PIDILITIND","HAVELLS","VOLTAS","SIEMENS","ABB","HAL","BEL","BDL","MAZAGON","COCHINSHIP","PFC","RECLTD","IRFC","RVNL","HUDCO","NHPC","TORNTPOWER","ADANIPOWER","JSWENERGY","BSE","MCX","CDSL","IEX","DIXON","KAYNES","ZEEL","SUNTV","PVRINOX","INDHOTEL","LEMONTREE","CHALET","TATACHEM","SRF","PIIND","UPL","COROMANDEL","SUZLON","INOXWIND","TATATECH","BALRAMCHIN","EIDPARRY","MUTHOOTFIN","MANAPPURAM","LICI","TATACOMM","BHARTIARTL","JIOFIN","JSWSTEEL","SAIL","NMDC","HINDALCO","VEDL","GRSE","PARAS","MTARTECH","ASTRAL","APLAPOLLO","JINDALSTEL","HINDCOPPER"];
-var data=[];
-async function fetchYahoo(symbols){
-  var qs=symbols.map(function(s){return s+".NS"}).join(",");
-  var urls=["https://query1.finance.yahoo.com/v7/finance/quote?symbols="+encodeURIComponent(qs),"https://query2.finance.yahoo.com/v7/finance/quote?symbols="+encodeURIComponent(qs)];
-  for(var i=0;i<urls.length;i++){
-    try{
-      var r=await fetch(urls[i]);
-      if(!r.ok) continue;
-      var j=await r.json();
-      if(j && j.quoteResponse && j.quoteResponse.result) return j.quoteResponse.result;
-    }catch(e){}
-  }
-  throw new Error("Yahoo blocked - REFRESH click pannu / VPN try pannu");
+let ALL_DATA = [];
+let SORT_KEY = 'symbol';
+let SORT_DIR = 1;
+
+function toTradingViewSymbol(raw){
+  // NSE: M&M -> M_M, BAJAJ-AUTO -> BAJAJ_AUTO
+  return raw.replace(/-/g,'_');
 }
-async function loadAll(){
-  document.getElementById("status").textContent="● loading "+SYMBOLS.length+" symbols via Yahoo...";
-  data=[];
+
+async function load1647(){
+  // TradingView INDIA SCAN - Gets all NSE symbols in one call
+  const url = "https://scanner.tradingview.com/india/scan";
+  const body = {
+    "filter": [{"left":"exchange","operation":"in_range","right":["NSE"]}],
+    "options": {"lang":"en"},
+    "symbols": {"query": {"types": []}, "tickers": []},
+    "columns": ["close","change","change_abs","high","low","volume","open","previous_close"],
+    "sort": {"sortBy":"volume","sortOrder":"desc"},
+    "range": {"from":0,"to":1647}
+  };
   try{
-    for(var b=0;b<SYMBOLS.length;b+=50){
-      var chunk=SYMBOLS.slice(b,b+50);
-      var res=await fetchYahoo(chunk);
-      for(var i=0;i<res.length;i++){
-        var q=res[i];
-        var sym=(q.symbol||"").replace(".NS","").toUpperCase();
-        var price=q.regularMarketPrice||0;
-        var chg=q.regularMarketChange||0;
-        var pct=q.regularMarketChangePercent||0;
-        var low=q.regularMarketDayLow||price;
-        var high=q.regularMarketDayHigh||price;
-        if(!price) continue;
-        data.push({sym:sym,price:price,chg:chg,pct:pct,low:low,high:high});
-      }
-      document.getElementById("total").textContent=data.length+" / "+SYMBOLS.length;
-      document.getElementById("status").textContent="● loading... "+data.length+" / "+SYMBOLS.length;
-    }
-    document.getElementById("status").textContent="● LIVE - "+new Date().toLocaleTimeString()+" - Market Closed? LTP = Last Close";
-    render();
-  }catch(e){ document.getElementById("status").textContent="● Error: "+e.message; }
+    const res = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)});
+    const json = await res.json();
+    const rows = json.data || [];
+    ALL_DATA = rows.map(r=>{
+      const ticker = r.s; // ex: NSE:RELIANCE
+      const d = r.d;
+      return {
+        symbol: ticker.replace('NSE:','').replace('BSE:',''),
+        tv_symbol: toTradingViewSymbol(ticker),
+        close: d[0], change: d[1], change_abs: d[2], high: d[3], low: d[4], volume: d[5], open: d[6]
+      };
+    });
+    document.getElementById("status").innerText = `✅ Loaded ${ALL_DATA.length} Symbols | ${new Date().toLocaleTimeString()} | Hyphen = Underscore Fixed`;
+    render(ALL_DATA);
+  }catch(e){
+    document.getElementById("status").innerText = "❌ Error: "+e.message+" | Trying backup fetch...";
+    console.error(e);
+  }
 }
-function render(){
-  var q=document.getElementById("search").value.toUpperCase();
-  var sort=document.getElementById("sort").value;
-  var list=data.filter(function(d){return d.sym.indexOf(q)!==-1});
-  if(sort=="change") list.sort(function(a,b){return b.pct-a.pct});
-  if(sort=="price") list.sort(function(a,b){return b.price-a.price});
-  if(sort=="name") list.sort(function(a,b){return a.sym.localeCompare(b.sym)});
-  var adv=0,dec=0; for(var i=0;i<data.length;i++){ if(data[i].pct>0) adv++; if(data[i].pct<0) dec++; }
-  document.getElementById("adv").textContent=adv; document.getElementById("dec").textContent=dec;
-  document.getElementById("tbody").innerHTML=list.map(function(d){
-    var cls=d.pct>=0?"g":"r";
-    return "<tr><td><b>"+d.sym+"</b></td><td>"+d.price.toFixed(2)+"</td><td class='"+cls+"'>"+d.chg.toFixed(2)+" ("+d.pct.toFixed(2)+"%)</td><td>"+d.low.toFixed(2)+" - "+d.high.toFixed(2)+"</td></tr>";
-  }).join("");
+
+function render(data){
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
+  data.forEach(r=>{
+    const isUp = (r.change||0) >= 0;
+    const cls = isUp?"up":"down";
+    const sign = isUp?"+":"";
+    tbody.innerHTML += `<tr>
+      <td><b>${r.symbol}</b><br><small style="color:#64748b">${r.tv_symbol}</small></td>
+      <td><b>${Number(r.close||0).toFixed(2)}</b></td>
+      <td class="${cls}">${sign}${Number(r.change||0).toFixed(2)}%</td>
+      <td class="${cls}">${sign}${Number(r.change_abs||0).toFixed(2)}</td>
+      <td>${Number(r.high||0).toFixed(2)}</td>
+      <td>${Number(r.low||0).toFixed(2)}</td>
+      <td>${Number(r.volume||0).toLocaleString('en-IN')}</td>
+    </tr>`;
+  });
 }
-document.getElementById("search").addEventListener("input",render);
-document.getElementById("sort").addEventListener("change",render);
-loadAll();
+
+function filterTable(){
+  const q = document.getElementById("search").value.toLowerCase().replace(/-/g,'_');
+  const filtered = ALL_DATA.filter(r=> r.symbol.toLowerCase().includes(q) || r.tv_symbol.toLowerCase().includes(q));
+  render(filtered);
+}
+
+function sortBy(key){
+  if(SORT_KEY===key) SORT_DIR*=-1; else {SORT_KEY=key; SORT_DIR=1;}
+  ALL_DATA.sort((a,b)=>{
+    const av = a[key]||0, bv = b[key]||0;
+    if(typeof av==="string") return SORT_DIR * av.localeCompare(bv);
+    return SORT_DIR * (av - bv);
+  });
+  filterTable();
+}
+
+load1647();
+setInterval(load1647, 15000); // 15 sec refresh for 1647
 </script>
 </body>
 </html>
