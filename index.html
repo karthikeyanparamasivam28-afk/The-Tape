@@ -1,0 +1,13 @@
+<h1>THE <span>TAPE</span></h1>
+<div class="sub">NSE LIVE - EMBEDDED SYMBOLS - FAST LOAD</div>
+<div class="stats">
+<div class="card">ADVANCES<b class="green" id="adv">0</b></div>
+<div class="card">DECLINES<b class="red" id="dec">0</b></div>
+<div class="card">UNCHANGED<b class="gray" id="unc">0</b></div>
+<div class="card">LOADED<b id="total">0 / 0</b></div>
+</div>
+<div id="status">● feed live - starting...</div><br>
+<input id="search" placeholder="Search...">
+<select id="sort"><option value="change">Sort: % Change</option><option value="price">Sort: Price</option><option value="name">Sort: Name</option></select>
+<button onclick="loadAll()">REFRESH</button>
+<table><thead><tr><th>SYMBOL</th><th>LTP</th><th>CHG %</th><th>DAY RANGE</th></tr></thead><tbody id="tbody"></tbody></table>
