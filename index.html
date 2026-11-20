@@ -3,19 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NSE 1647 Live Table</title>
+<title>NSE 1647 Live - The Tape</title>
 <style>
 *{box-sizing:border-box;font-family:Arial}body{background:#0f172a;color:#fff;padding:12px;margin:0}
-h1{text-align:center;font-size:20px}input{width:100%;padding:12px;margin:10px 0;border-radius:10px;border:none;background:#1e293b;color:#fff;font-size:15px}
-table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden}th,td{padding:10px 8px;font-size:13px;border-bottom:1px solid #334155;text-align:left}
-th{color:#94a3b8;cursor:pointer;user-select:none;position:sticky;top:0;background:#1e293b}.up{color:#22c55e}.down{color:#ef4444}
+h1{text-align:center;font-size:20px;margin:5px}
+.sub{text-align:center;color:#94a3b8;font-size:12px;margin-bottom:10px}
+input{width:100%;padding:12px;margin:10px 0;border-radius:10px;border:none;background:#1e293b;color:#fff;font-size:15px;outline:none}
+.top{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+.card{background:#1e293b;padding:12px;border-radius:12px;min-width:140px;text-align:center;flex:1}
+.card b{font-size:12px;color:#cbd5e1}.card h2{font-size:20px;margin:6px 0}
+.up{color:#22c55e}.down{color:#ef4444}
+table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden}
+th,td{padding:10px 8px;font-size:13px;border-bottom:1px solid #334155;text-align:left}
+th{color:#94a3b8;cursor:pointer;user-select:none;position:sticky;top:0;background:#1e293b}
 #status{text-align:center;font-size:11px;color:#facc15;margin:8px}
+button{background:#22c55e;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:bold;cursor:pointer;margin:10px auto;display:block}
 </style>
 </head>
 <body>
-<h1>📈 NSE 1647 LIVE - TradingView</h1>
-<input id="search" placeholder="Search 1647 symbols... RELIANCE, M&M = M_M, TCS..." oninput="filterTable()">
-<div id="status">Loading 1647 symbols from TradingView...</div>
+<h1>📈 THE TAPE - NSE 1647 LIVE</h1>
+<p class="sub">TradingView Scanner + Proxy Fix • Hyphen = Underscore • Auto Refresh 15 Sec</p>
+
+<div class="top">
+<div class="card"><b>NIFTY 50</b><h2 id="nifty">--</h2><span id="niftyChg">--</span></div>
+<div class="card"><b>SENSEX</b><h2 id="sensex">--</h2><span id="sensexChg">--</span></div>
+<div class="card"><b>BANK NIFTY</b><h2 id="banknifty">--</h2><span id="bankChg">--</span></div>
+</div>
+
+<input id="search" placeholder="Search 1647 symbols... 【entity-RELIANCE¦canonical_name=RELIANCE】, M&M, TCS..." oninput="filterTable()">
+<div id="status">Loading 1647 symbols...</div>
 <table><thead><tr>
 <th onclick="sortBy('symbol')">SYMBOL ↕</th>
 <th onclick="sortBy('close')">PRICE ↕</th>
@@ -25,20 +41,22 @@ th{color:#94a3b8;cursor:pointer;user-select:none;position:sticky;top:0;backgroun
 <th onclick="sortBy('low')">LOW ↕</th>
 <th onclick="sortBy('volume')">VOL ↕</th>
 </tr></thead><tbody id="tbody"></tbody></table>
+<button onclick="load1647()">🔄 Refresh Now</button>
 
 <script>
 let ALL_DATA = [];
-let SORT_KEY = 'symbol';
-let SORT_DIR = 1;
+let SORT_KEY = 'volume';
+let SORT_DIR = -1;
 
 function toTradingViewSymbol(raw){
-  // NSE: M&M -> M_M, BAJAJ-AUTO -> BAJAJ_AUTO
   return raw.replace(/-/g,'_');
 }
 
 async function load1647(){
-  // TradingView INDIA SCAN - Gets all NSE symbols in one call
-  const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://scanner.tradingview.com/india/scan");
+  document.getElementById("status").innerText = "Loading... "+new Date().toLocaleTimeString();
+  // CORS FIX: Proxy via allorigins
+  const tvUrl = "https://scanner.tradingview.com/india/scan";
+  const url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(tvUrl);
   const body = {
     "filter": [{"left":"exchange","operation":"in_range","right":["NSE"]}],
     "options": {"lang":"en"},
@@ -52,7 +70,7 @@ async function load1647(){
     const json = await res.json();
     const rows = json.data || [];
     ALL_DATA = rows.map(r=>{
-      const ticker = r.s; // ex: NSE:RELIANCE
+      const ticker = r.s;
       const d = r.d;
       return {
         symbol: ticker.replace('NSE:','').replace('BSE:',''),
@@ -60,12 +78,41 @@ async function load1647(){
         close: d[0], change: d[1], change_abs: d[2], high: d[3], low: d[4], volume: d[5], open: d[6]
       };
     });
-    document.getElementById("status").innerText = `✅ Loaded ${ALL_DATA.length} Symbols | ${new Date().toLocaleTimeString()} | Hyphen = Underscore Fixed`;
+    document.getElementById("status").innerText = `✅ Loaded ${ALL_DATA.length} Symbols | ${new Date().toLocaleTimeString()} | Source: TradingView`;
+    updateTop();
     render(ALL_DATA);
   }catch(e){
-    document.getElementById("status").innerText = "❌ Error: "+e.message+" | Trying backup fetch...";
+    document.getElementById("status").innerText = "❌ Error: "+e.message;
     console.error(e);
   }
+}
+
+function updateTop(){
+  function setTop(id,chgId,sym){
+    const f = ALL_DATA.find(x=>x.symbol===sym);
+    if(!f) return;
+    document.getElementById(id).innerText = Number(f.close).toFixed(2);
+    const el = document.getElementById(chgId);
+    el.innerText = `${f.change>=0?"+":""}${Number(f.change).toFixed(2)}% (${Number(f.change_abs).toFixed(2)})`;
+    el.className = f.change>=0?"up":"down";
+  }
+  // NIFTY / BANKNIFTY are indices - may not be in NSE equity scan, so keep if found
+  setTop("nifty","niftyChg","NIFTY");
+  setTop("banknifty","bankChg","BANKNIFTY");
+  // SENSEX is BSE - try fetch separately
+  fetchSingleTop("BSE:SENSEX","sensex","sensexChg");
+}
+
+async function fetchSingleTop(symbol, id, chgId){
+  try{
+    const u = "https://api.allorigins.win/raw?url=" + encodeURIComponent(`https://scanner.tradingview.com/symbol?symbol=${symbol}&fields=close,change,change_abs`);
+    const r = await fetch(u);
+    const d = await r.json();
+    document.getElementById(id).innerText = Number(d.close).toFixed(2);
+    const el = document.getElementById(chgId);
+    el.innerText = `${d.change>=0?"+":""}${Number(d.change).toFixed(2)}% (${Number(d.change_abs).toFixed(2)})`;
+    el.className = d.change>=0?"up":"down";
+  }catch(e){}
 }
 
 function render(data){
@@ -104,7 +151,7 @@ function sortBy(key){
 }
 
 load1647();
-setInterval(load1647, 15000); // 15 sec refresh for 1647
+setInterval(load1647, 15000);
 </script>
 </body>
 </html>
