@@ -1,2 +1,0 @@
-# The-Tape
-Stock tracker
